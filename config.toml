@@ -1,0 +1,6 @@
+[api]
+url_base = "<URL>"
+token = "<TOKEN>"
+
+[nmap_script]
+script_name = "./nmap_scan.sh"
