@@ -3,6 +3,19 @@ import subprocess
 import requests
 import os
 from lxml import etree
+import logging
+
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
+file_handler = logging.FileHandler('app.log')
+file_handler.setLevel(logging.INFO)
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+
+logging.getLogger().addHandler(file_handler)
+
 
 class Config:
     def __init__(self):
@@ -18,10 +31,12 @@ class Config:
                     'accept': 'application/json',
                     'Authorization': f'Token {token}'
                 }
+        self.logger = logging.getLogger(__name__)
 
 class Ipam(Config):
     def __init__(self):
         super().__init__()
+        self.logger = logging.getLogger(__name__ + '.Ipam')
         
     def get_prefix(self):
         endpoint = self.url + "/api/ipam/prefixes/"
@@ -31,6 +46,7 @@ class Ipam(Config):
         for result in results:
             if any(tag['name'] == 'Discover' for tag in result['tags']):
                 prefix_list.append(result['prefix'])
+        self.logger.info(f"Prefix list retrieved: {prefix_list}")
 
         return prefix_list
 
@@ -57,8 +73,10 @@ class NmapScript(Config):
         for prefix in prefix_list:
             print(f"Scanning: {prefix}")
             result = subprocess.run([self.nmap_script, prefix], capture_output=True, text=True)
+            self.logger.info(f"Result: {result}")
             if result.returncode == 0:
                 scans_list.append(prefix)
+        self.logger.info(f"Scans completed: {scans_list}")
         return scans_list
 
     def count_xml(self):
@@ -69,6 +87,7 @@ class NmapScript(Config):
     def parser_xml(self):
         files = self.count_xml()
         hosts_list = []
+        self.logger.info(f"Parseando")
         for file_xml in files:
             subnet_slice = file_xml[-6:-4]
             tree = etree.parse(file_xml)
