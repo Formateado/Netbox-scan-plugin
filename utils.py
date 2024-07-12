@@ -74,20 +74,21 @@ class NmapScript(Config):
             tree = etree.parse(file_xml)
             root = tree.getroot()
 
-            for host in root.xpath('//host'):
+            for host in root.findall('.//host'):
                 host_dict = {}
-
-                address_elem = host.xpath('address[@addrtype="ipv4"]')[0]
-                host_dict['address'] = address_elem.get('addr', 'Unknown')
+                host_dict['address'] = host.find('address').attrib['addr']
                 host_dict['subnet'] = f"{subnet_slice}"
 
-                status_elem = host.xpath('status')[0]
-                host_dict['status'] = status_elem.get('state', 'Unknown')
-
-                os_elem = host.xpath('os/osmatch')[0]
-                host_dict['os_name'] = os_elem.get('name', 'OS not detected')
+                osmatches = host.findall('.//os/osmatch')
+                if osmatches:
+                    name = osmatches[0].attrib['name']
+                    accuracy = osmatches[0].attrib['accuracy']
+                    host_dict['os_name'] = f"Os: {name}, Accuracy: {accuracy}"
+                else:
+                    host_dict['os_name'] = "OS not detected"
 
                 hosts_list.append(host_dict)
+
         return hosts_list
 
     def compress(self):
