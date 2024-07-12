@@ -26,9 +26,12 @@ class Ipam(Config):
     def get_prefix(self):
         endpoint = self.url + "/api/ipam/prefixes/"
         res = requests.get(endpoint, headers=self.headers).json()
+        prefix_list = []
         results = res["results"]
-        prefix_list = [data["prefix"] for data in results]
-        
+        for result in results:
+            if any(tag['name'] == 'Discover' for tag in result['tags']):
+                prefix_list.append(result['prefix'])
+
         return prefix_list
 
     def post_ipaddress(self, hosts_list):
@@ -90,3 +93,4 @@ class NmapScript(Config):
     def compress(self):
         result = subprocess.run(["./compress.sh"], capture_output=True, text=True) 
         return result.returncode
+
