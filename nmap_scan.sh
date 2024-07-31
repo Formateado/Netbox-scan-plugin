@@ -1,9 +1,11 @@
-#!/bin/bash
+i#!/bin/bash
 
-for net in "$@" # Remove for cycle
-do
-    NETNAME=$(echo $net | tr -s '/' '-')
-    OUTPUT="./scans/scan-$NETNAME.xml"
 
-    nmap "$net" -T4 -O --system-dns --host-timeout 30s -oX $OUTPUT
-done
+PREFIX=$1
+NETNAME=$(echo $PREFIX | tr -s '/' '-')
+OUTPUT="./scans/scan-$NETNAME.xml"
+
+nmap -sn -PE "$PREFIX" -oG - | awk '/Up$/{print $2}' > tmp_file.txt
+nmap -iL tmp_file.txt -T4 -O --system-dns --host-timeout 30s -oX $OUTPUT
+
+rm tmp_file.txt
