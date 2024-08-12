@@ -47,11 +47,12 @@ class Ipam(Config):
         Retrieves a list of prefixes from the IPAM API that have the 'Discover' tag.
 
         Returns:
-            list: A list of prefixes with the 'Discover' tag.
+            list: A list of prefixes that have the 'Discover' tag.
+                  Returns None if an error occurs during the API request or data processing.
         """
         endpoint = self.url + "/api/ipam/prefixes/"
         try:
-            res = requests.get(endpoint, headers=self.headers).json()
+            res = requests.get(endpoint, headers=self.headers, timeout=10).json()
             prefix_list = []
             results = res["results"]
             for result in results:
@@ -60,6 +61,7 @@ class Ipam(Config):
             self.logger.info(f"Prefix list retrieved: {prefix_list}")
         except:
             self.logger.error(f"An unexpected error occurred while trying to get prefixes.")
+            return None
 
         return prefix_list
 
@@ -70,6 +72,7 @@ class Ipam(Config):
         Args:
             hosts_list (list): A list of dictionaries containing IP address and subnet information.
         """
+        ip_count = 0
         endpoint = self.url + "/api/ipam/ip-addresses/"
         for host in hosts_list:
             try:
@@ -81,9 +84,11 @@ class Ipam(Config):
                         "osmatch": host["os_name"]
                     }
                 }
-                requests.post(endpoint, json=body, headers=self.headers)
+                requests.post(endpoint, json=body, headers=self.headers, timeout=10)
+                ip_count += 1
             except:
                 self.logger.error(f"Error trying to upload host {host['address']} data to netbox api")
+        self.logger.info(f"IP address upload completed, total: {ip_count}")
 
 class NmapScript(Config):
     """
@@ -101,6 +106,7 @@ class NmapScript(Config):
 
         Returns:
             list: A list of prefixes that were successfully scanned.
+                  If no scans are completed, returns None.
         """
         scans_list = []
         for prefix in prefix_list:
@@ -108,8 +114,15 @@ class NmapScript(Config):
             result = subprocess.run([self.nmap_script, prefix], capture_output=True, text=True)
             if result.returncode == 0:
                 scans_list.append(prefix)
-        self.logger.info(f"Scans completed: {scans_list}")
-        return scans_list
+            else:
+                self.logger.error(f"Error when running nmap script for prefix {prefix}, status error: {result.returncode}")
+
+        if len(scans_list) > 0:
+            self.logger.info(f"Scans completed: {scans_list}")
+            return scans_list
+        else:
+            self.logger.error("No scans have been completed")
+            return None
 
     def count_xml(self):
         """
@@ -160,10 +173,7 @@ class NmapScript(Config):
     def compress(self):
         """
         Runs a shell script to compress files.
-
-        Returns:
-            int: The return code of the shell script.
         """
-        result = subprocess.run(["./compress.sh"], capture_output=True, text=True) 
-        return result.returncode
+        result = subprocess.run(["./compress.sh"], capture_output=True, text=True)
+        self.logger.info(f"Compressed xml files, code: {result.returncode}")
 
