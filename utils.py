@@ -50,13 +50,16 @@ class Ipam(Config):
             list: A list of prefixes with the 'Discover' tag.
         """
         endpoint = self.url + "/api/ipam/prefixes/"
-        res = requests.get(endpoint, headers=self.headers).json()
-        prefix_list = []
-        results = res["results"]
-        for result in results:
-            if any(tag['name'] == 'Discover' for tag in result['tags']):
-                prefix_list.append(result['prefix'])
-        self.logger.info(f"Prefix list retrieved: {prefix_list}")
+        try:
+            res = requests.get(endpoint, headers=self.headers).json()
+            prefix_list = []
+            results = res["results"]
+            for result in results:
+                if any(tag['name'] == 'Discover' for tag in result['tags']):
+                    prefix_list.append(result['prefix'])
+            self.logger.info(f"Prefix list retrieved: {prefix_list}")
+        except:
+            self.logger.error(f"An unexpected error occurred while trying to get prefixes.")
 
         return prefix_list
 
@@ -69,15 +72,18 @@ class Ipam(Config):
         """
         endpoint = self.url + "/api/ipam/ip-addresses/"
         for host in hosts_list:
-            body = {
-                "address": f"{host['address']}/{host['subnet']}",
-                "status": "active",
-                "description": "Automatic scanning",
-                "custom_fields": {
-                    "osmatch": host["os_name"]
+            try:
+                body = {
+                    "address": f"{host['address']}/{host['subnet']}",
+                    "status": "active",
+                    "description": "Automatic scanning",
+                    "custom_fields": {
+                        "osmatch": host["os_name"]
+                    }
                 }
-            }
-            res = requests.post(endpoint, json=body, headers=self.headers)
+                requests.post(endpoint, json=body, headers=self.headers)
+            except:
+                self.logger.error(f"Error trying to upload host {host['address']} data to netbox api")
 
 class NmapScript(Config):
     """
@@ -127,25 +133,27 @@ class NmapScript(Config):
         hosts_list = []
         self.logger.info(f"Parsing XML files")
         for file_xml in files:
-            #add try
-            subnet_slice = file_xml[-6:-4]
-            tree = etree.parse(file_xml)
-            root = tree.getroot()
+            try:
+                subnet_slice = file_xml[-6:-4]
+                tree = etree.parse(file_xml)
+                root = tree.getroot()
 
-            for host in root.findall('.//host'):
-                host_dict = {}
-                host_dict['address'] = host.find('address').attrib['addr']
-                host_dict['subnet'] = f"{subnet_slice}"
+                for host in root.findall('.//host'):
+                    host_dict = {}
+                    host_dict['address'] = host.find('address').attrib['addr']
+                    host_dict['subnet'] = f"{subnet_slice}"
 
-                osmatches = host.findall('.//os/osmatch')
-                if osmatches:
-                    name = osmatches[0].attrib['name']
-                    accuracy = osmatches[0].attrib['accuracy']
-                    host_dict['os_name'] = f"Os: {name}, Accuracy: {accuracy}"
-                else:
-                    host_dict['os_name'] = "OS not detected"
+                    osmatches = host.findall('.//os/osmatch')
+                    if osmatches:
+                        name = osmatches[0].attrib['name']
+                        accuracy = osmatches[0].attrib['accuracy']
+                        host_dict['os_name'] = f"Os: {name}, Accuracy: {accuracy}"
+                    else:
+                        host_dict['os_name'] = "OS not detected"
 
-                hosts_list.append(host_dict)
+                    hosts_list.append(host_dict)
+            except Exception as e:
+                self.logger.error(f"An unexpected error occurred while processing file {file_xml}: {e}")
 
         return hosts_list
 
