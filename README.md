@@ -1,6 +1,6 @@
 # Automatic Scanner Plugin for NetBox
 
-This plugin gets pre-loaded prefixes from NetBox and performs scans with Nmap
+This plugin gets pre-loaded prefixes from NetBox and performs scans with Nmap.
 
 ## How to install
 
@@ -36,3 +36,7 @@ Run the script with `sudo` or as `root`, it will display the logs on screen (it 
 
 When the script finishes the active IPs are loaded in the IPAM -> IP Addresses section, you can also configure the table to add the custom `osmatch` column.
 Each scan will be saved in the plugin's scans folder, compressed in `tar.gz` format with each corresponding prefix in `.xml` format.
+
+```bash
+python3 main.py 
+```
